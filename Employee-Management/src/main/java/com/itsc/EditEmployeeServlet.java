@@ -7,71 +7,54 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
-@WebServlet("/edit")
+@WebServlet("/EditEmployeeServlet")
 public class EditEmployeeServlet extends HttpServlet {
 
-      	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-			String query = "SELECT * from employees where id=?;";
-      		PrintWriter pw = response.getWriter();
-		try {
-			Connection connection = DBConnection.connect();
-			PreparedStatement ps = connection.prepareStatement(query);
-			int id = Integer.parseInt(request.getParameter("id"));
+    // JDBC URL, username, and password of MySQL server
+    private static final String JDBC_URL = "jdbc:mysql://localhost:3306/firstTryDb";
+    private static final String JDBC_USER = "haile";
+    private static final String JDBC_PASSWORD = "haile";
 
-			ps.setInt(1, id);
-			ResultSet rs = ps.executeQuery();
-			rs.next();
-			
-			pw.println("<h1>Employee</h1>");
-			pw.println("<form method=\"POST\">");
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
+        res.setContentType("text/html");
+        PrintWriter pw = res.getWriter();
 
-			String name  = rs.getString(2);
-			String designation = rs.getString(3);
-			int salary = rs.getInt(4);
+        String employeeId = req.getParameter("id");
 
-			pw.println(" <input hidden type=\"number\" name=\"id\" value=\""+id+"\"/> <br/>");
-			pw.println("Name: <input type=\"text\" name=\"name\" value=\""+name+"\"/> <br/>");
-			pw.println("Designation: <input type=\"text\" name=\"designation\" value=\""+designation+"\"/> <br/>");
-			pw.println("Salary: <input type=\"number\" name=\"salary\" value=\""+salary+"\"/> <br/>");
+        if (employeeId != null && !employeeId.isEmpty()) {
+            try (Connection conn = DriverManager.getConnection(JDBC_URL, JDBC_USER, JDBC_PASSWORD);
+                 PreparedStatement ps = conn.prepareStatement("SELECT * FROM employees WHERE id = ?");
+            ) {
+                ps.setInt(1, Integer.parseInt(employeeId));
+                ResultSet rs = ps.executeQuery();
 
-			pw.println("<button>Save</button>");
-			pw.println("</form>");
+                if (rs.next()) {
+                    // Display the form to edit the employee
+                    pw.println("<html><body><h2>Edit Employee</h2>");
+                    pw.println("<form action='UpdateEmployeeServlet' method='post'>");
+                    pw.println("ID: <input type='text' name='id' value='" + rs.getInt("id") + "' readonly><br>");
+                    pw.println("Name: <input type='text' name='name' value='" + rs.getString("name") + "'><br>");
+                    pw.println("Designation: <input type='text' name='designation' value='" + rs.getString("designation") + "'><br>");
+                    pw.println("Salary: <input type='text' name='salary' value='" + rs.getFloat("salary") + "'><br>");
+                    pw.println("<input type='submit' value='Update'>");
+                    pw.println("</form></body></html>");
+                } else {
+                    pw.println("<h2>Employee not found with ID: " + employeeId + "</h2>");
+                }
 
-		} catch (SQLException e) {
-			e.printStackTrace();
-			pw.println("error: "+ e.getMessage());
-		}
-
-	  }
-
-	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-			String query = "UPDATE employees set name=?, designation=?, salary=? WHERE id=?";
-			PrintWriter pw = response.getWriter();
-
-			int id = Integer.parseInt(request.getParameter("id"));
-			String name = request.getParameter("name");
-			String designation = request.getParameter("designation");
-			int salary = Integer.parseInt(request.getParameter("salary"));
-
-			
-			try {
-				Connection connection = DBConnection.connect();
-				PreparedStatement ps = connection.prepareStatement(query);
-				ps.setString(1, name);
-				ps.setString(2, designation);
-				ps.setInt(3, salary);
-				ps.setInt(4, id);
-				
-				ps.execute();
-				response.sendRedirect("view");
-				
-			} catch (SQLException e) {
-				e.printStackTrace();
-				pw.println("error: "+ e.getMessage());
-				e.printStackTrace();
-			}
-	}
-
+            } catch (SQLException e) {
+                e.printStackTrace();
+                pw.println("Error: " + e.getMessage());
+            }
+        } else {
+            pw.println("<h2>Invalid Employee ID</h2>");
+        }
+    }
 }

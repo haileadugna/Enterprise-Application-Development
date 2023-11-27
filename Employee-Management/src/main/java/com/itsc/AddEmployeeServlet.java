@@ -1,5 +1,6 @@
 package com.itsc;
 
+import jakarta.annotation.Resource;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -9,57 +10,54 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.*;
 
+import javax.sql.DataSource;
 
 
 
 
-@WebServlet("/add")
+
+@WebServlet("/AddEmployeeServlet")
 public class AddEmployeeServlet extends HttpServlet {
+	
+	private static final String query = "INSERT INTO employees(name, designation, salary) VALUES(?, ?, ?)";
+	
+	@Resource(name = "jdbc/firstTryDb")
+    private DataSource dataSource;
 
-	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+	@Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse res) throws IOException {
+        res.setContentType("text/html");
 
-      		PrintWriter pw = response.getWriter();
+        String name = req.getParameter("name");
+        String designation = req.getParameter("designation");
+        int salary = Integer.parseInt(req.getParameter("salary"));
+        System.out.println(name);
 
-			pw.println("<h1>New Employee</h1>");
-			pw.println("<form method=\"POST\">");
+        PrintWriter pw = res.getWriter();
 
-			pw.println(" <input hidden type=\"number\" name=\"id\"/> <br/>");
-			pw.println("Name: <input type=\"text\" name=\"name\" /> <br/>");
-			pw.println("Designation: <input type=\"text\" name=\"designation\" /> <br/>");
-			pw.println("Salary: <input type=\"number\" name=\"salary\" /> <br/>");
+        try {
+            // Load the JDBC driver
+            Class.forName("com.mysql.cj.jdbc.Driver");
 
-			pw.println("<button>Register</button>");
-			pw.println("</form>");
+            Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/firstTryDb", "haile", "haile");
+            PreparedStatement ps = conn.prepareStatement(query);
+            ps.setString(1, name);
+            ps.setString(2, designation);
+            ps.setFloat(3, salary);
+            System.out.println("success");
+            int count = ps.executeUpdate();
 
-		}
+            if (count == 1) {
+                pw.println("<h2> Employee registered successfully.</h2");
+            } else {
+                pw.println("<h2> Employee Not registered successfully.</h2");
+            }
 
-	/**
-	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
-	 */
-	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-			String query = "INSERT INTO employees (name, designation, salary) VALUES (?, ?, ?);";
-			PrintWriter pw = response.getWriter();
-
-			String name = request.getParameter("name");
-			String designation = request.getParameter("designation");
-			int salary = Integer.parseInt(request.getParameter("salary"));
-
-			
-			try {
-				Connection connection = DBConnection.connect();
-				PreparedStatement ps = connection.prepareStatement(query);
-				ps.setString(1, name);
-				ps.setString(2, designation);
-				ps.setInt(3, salary);
-				
-				ps.execute();
-				response.sendRedirect("view");
-				
-			} catch (SQLException e) {
-				e.printStackTrace();
-				pw.println("error: "+ e.getMessage());
-				e.printStackTrace();
-			}
+        } catch (SQLException | ClassNotFoundException e) {
+            e.printStackTrace();
+            pw.println("error: " + e.getMessage());
+            System.out.println("not success");
+        }
 	}
 
 }
